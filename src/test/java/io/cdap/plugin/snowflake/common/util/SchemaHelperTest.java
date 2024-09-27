@@ -182,4 +182,21 @@ public class SchemaHelperTest {
     Assert.assertNull(actual);
 
   }
+
+  @Test
+  public void testGetSchemaManuallyUpdatedTheSchema() {
+    Schema expected = Schema.recordOf("test",
+                                      Schema.Field.of("test_field", Schema.nullableOf(Schema.of(Schema.Type.LONG)))
+    );
+
+    SnowflakeBatchSourceConfig mockConfig = Mockito.mock(SnowflakeBatchSourceConfig.class);
+    Mockito.when(mockConfig.canConnect()).thenReturn(false);
+    Mockito.when(mockConfig.getSchema()).thenReturn(expected.toString());
+
+    MockFailureCollector collector = new MockFailureCollector(MOCK_STAGE);
+    Schema actual = SchemaHelper.getSchema(mockConfig, collector);
+
+    Assert.assertTrue(collector.getValidationFailures().isEmpty());
+    Assert.assertEquals(expected, actual);
+  }
 }
