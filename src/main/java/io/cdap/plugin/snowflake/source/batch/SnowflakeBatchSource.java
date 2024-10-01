@@ -87,8 +87,7 @@ public class SnowflakeBatchSource extends BatchSource<NullWritable, Map<String, 
   @Override
   public void initialize(BatchRuntimeContext context) throws Exception {
     super.initialize(context);
-    SnowflakeSourceAccessor snowflakeAccessor = new SnowflakeSourceAccessor(config);
-    Schema schema = SchemaHelper.getSchema(snowflakeAccessor, config.getImportQuery());
+    Schema schema = SchemaHelper.getSchema(config, context.getFailureCollector());
     this.transformer = new SnowflakeMapToRecordTransformer(schema);
   }
 
