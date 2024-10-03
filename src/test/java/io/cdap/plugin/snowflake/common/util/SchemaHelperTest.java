@@ -65,15 +65,16 @@ public class SchemaHelperTest {
 
   @Test
   public void testGetSchemaFromSnowflakeUnknownType() throws IOException {
+    String importQuery = "SELECT * FROM someTable";
     MockFailureCollector collector = new MockFailureCollector(MOCK_STAGE);
     SnowflakeSourceAccessor snowflakeAccessor = Mockito.mock(SnowflakeSourceAccessor.class);
 
     List<SnowflakeFieldDescriptor> sample = new ArrayList<>();
     sample.add(new SnowflakeFieldDescriptor("field1", -1000, false));
 
-    Mockito.when(snowflakeAccessor.describeQuery(null)).thenReturn(sample);
+    Mockito.when(snowflakeAccessor.describeQuery(importQuery)).thenReturn(sample);
 
-    SchemaHelper.getSchema(snowflakeAccessor, null, collector, null);
+    SchemaHelper.getSchema(snowflakeAccessor, null, collector, importQuery);
 
     ValidationAssertions.assertValidationFailed(
       collector, Collections.singletonList(SnowflakeBatchSourceConfig.PROPERTY_SCHEMA));
@@ -81,6 +82,7 @@ public class SchemaHelperTest {
 
   @Test
   public void testGetSchemaFromSnowflake() throws IOException {
+    String importQuery = "SELECT * FROM someTable";
     MockFailureCollector collector = new MockFailureCollector(MOCK_STAGE);
     SnowflakeSourceAccessor snowflakeAccessor = Mockito.mock(SnowflakeSourceAccessor.class);
 
@@ -142,9 +144,9 @@ public class SchemaHelperTest {
       Schema.Field.of("field134", Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)))
     );
 
-    Mockito.when(snowflakeAccessor.describeQuery(null)).thenReturn(sample);
+    Mockito.when(snowflakeAccessor.describeQuery(importQuery)).thenReturn(sample);
 
-    Schema actual = SchemaHelper.getSchema(snowflakeAccessor, null, collector, null);
+    Schema actual = SchemaHelper.getSchema(snowflakeAccessor, null, collector, importQuery);
 
     Assert.assertTrue(collector.getValidationFailures().isEmpty());
     Assert.assertEquals(expected, actual);
@@ -181,5 +183,22 @@ public class SchemaHelperTest {
     Assert.assertTrue(collector.getValidationFailures().isEmpty());
     Assert.assertNull(actual);
 
+  }
+
+  @Test
+  public void testGetSchemaManuallyUpdatedTheSchema() {
+    Schema expected = Schema.recordOf("test",
+                                      Schema.Field.of("test_field", Schema.nullableOf(Schema.of(Schema.Type.LONG)))
+    );
+
+    SnowflakeBatchSourceConfig mockConfig = Mockito.mock(SnowflakeBatchSourceConfig.class);
+    Mockito.when(mockConfig.canConnect()).thenReturn(false);
+    Mockito.when(mockConfig.getSchema()).thenReturn(expected.toString());
+
+    MockFailureCollector collector = new MockFailureCollector(MOCK_STAGE);
+    Schema actual = SchemaHelper.getSchema(mockConfig, collector);
+
+    Assert.assertTrue(collector.getValidationFailures().isEmpty());
+    Assert.assertEquals(expected, actual);
   }
 }
