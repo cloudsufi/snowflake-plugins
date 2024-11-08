@@ -24,6 +24,7 @@ import io.cdap.plugin.snowflake.common.client.SnowflakeAccessor;
 import io.cdap.plugin.snowflake.common.client.SnowflakeFieldDescriptor;
 import io.cdap.plugin.snowflake.common.exception.SchemaParseException;
 import io.cdap.plugin.snowflake.source.batch.SnowflakeBatchSourceConfig;
+import io.cdap.plugin.snowflake.source.batch.SnowflakeInputFormatProvider;
 import io.cdap.plugin.snowflake.source.batch.SnowflakeSourceAccessor;
 import java.io.IOException;
 import java.sql.Types;
@@ -62,7 +63,8 @@ public class SchemaHelper {
       return getParsedSchema(config.getSchema());
     }
 
-    SnowflakeSourceAccessor snowflakeSourceAccessor = new SnowflakeSourceAccessor(config);
+    SnowflakeSourceAccessor snowflakeSourceAccessor =
+      new SnowflakeSourceAccessor(config, SnowflakeInputFormatProvider.PROPERTY_DEFAULT_ESCAPE_CHAR);
     return getSchema(snowflakeSourceAccessor, config.getSchema(), collector, config.getImportQuery());
   }
 

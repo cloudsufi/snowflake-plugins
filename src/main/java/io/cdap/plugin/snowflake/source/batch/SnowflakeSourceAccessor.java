@@ -60,10 +60,12 @@ public class SnowflakeSourceAccessor extends SnowflakeAccessor {
       "OVERWRITE=TRUE HEADER=TRUE SINGLE=FALSE";
   private static final String COMMAND_MAX_FILE_SIZE = " MAX_FILE_SIZE=%s";
   private final SnowflakeBatchSourceConfig config;
+  private final char escapeChar;
 
-  public SnowflakeSourceAccessor(SnowflakeBatchSourceConfig config) {
+  public SnowflakeSourceAccessor(SnowflakeBatchSourceConfig config, String escapeChar) {
     super(config);
     this.config = config;
+    this.escapeChar = escapeChar.charAt(0);
   }
 
   /**
@@ -116,7 +118,7 @@ public class SnowflakeSourceAccessor extends SnowflakeAccessor {
       InputStream downloadStream = connection.unwrap(SnowflakeConnection.class)
         .downloadStream("@~", stageSplit, true);
       InputStreamReader inputStreamReader = new InputStreamReader(downloadStream);
-      return new CSVReader(inputStreamReader);
+      return new CSVReader(inputStreamReader, ',', '"', escapeChar);
     } catch (SQLException e) {
       throw new IOException(e);
     }

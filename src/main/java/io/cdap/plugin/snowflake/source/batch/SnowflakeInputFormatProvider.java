@@ -29,13 +29,17 @@ import java.util.Map;
 public class SnowflakeInputFormatProvider implements InputFormatProvider {
 
   public static final String PROPERTY_CONFIG_JSON = "cdap.snowflake.source.config";
+  public static final String PROPERTY_ESCAPE_CHAR = "cdap.snowflake.source.escape";
+
+  public static final String PROPERTY_DEFAULT_ESCAPE_CHAR = "\\";
 
   private static final Gson GSON = new Gson();
   private final Map<String, String> conf;
 
-  public SnowflakeInputFormatProvider(SnowflakeBatchSourceConfig config) {
+  public SnowflakeInputFormatProvider(SnowflakeBatchSourceConfig config, String escapeChar) {
     this.conf = new ImmutableMap.Builder<String, String>()
       .put(PROPERTY_CONFIG_JSON, GSON.toJson(config))
+      .put(PROPERTY_ESCAPE_CHAR, escapeChar)
       .build();
   }
 
