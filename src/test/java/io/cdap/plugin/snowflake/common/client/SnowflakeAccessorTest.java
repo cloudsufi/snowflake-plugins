@@ -18,6 +18,7 @@ package io.cdap.plugin.snowflake.common.client;
 
 import io.cdap.plugin.snowflake.Constants;
 import io.cdap.plugin.snowflake.common.BaseSnowflakeTest;
+import io.cdap.plugin.snowflake.source.batch.SnowflakeInputFormatProvider;
 import io.cdap.plugin.snowflake.source.batch.SnowflakeSourceAccessor;
 import org.junit.Assert;
 import org.junit.Test;
@@ -44,7 +45,8 @@ import java.util.regex.Pattern;
  */
 public class SnowflakeAccessorTest extends BaseSnowflakeTest {
 
-  private SnowflakeSourceAccessor snowflakeAccessor = new SnowflakeSourceAccessor(CONFIG);
+  private SnowflakeSourceAccessor snowflakeAccessor =
+    new SnowflakeSourceAccessor(CONFIG, SnowflakeInputFormatProvider.PROPERTY_DEFAULT_ESCAPE_CHAR);
 
   @Test
   public void testDescribeQuery() throws Exception {
