@@ -16,6 +16,7 @@
 
 package io.cdap.plugin.snowflake.source.batch;
 
+import com.google.common.base.Strings;
 import io.cdap.cdap.api.annotation.Description;
 import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.annotation.Plugin;
@@ -33,6 +34,7 @@ import io.cdap.plugin.common.LineageRecorder;
 import io.cdap.plugin.snowflake.common.util.SchemaHelper;
 import org.apache.hadoop.io.NullWritable;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -68,7 +70,11 @@ public class SnowflakeBatchSource extends BatchSource<NullWritable, Map<String, 
   public void prepareRun(BatchSourceContext context) {
     FailureCollector failureCollector = context.getFailureCollector();
     config.validate(failureCollector);
-
+    Map<String, String> arguments = new HashMap<>(context.getArguments().asMap());
+    String escapeChar = arguments.containsKey(SnowflakeInputFormatProvider.PROPERTY_ESCAPE_CHAR) &&
+      !Strings.isNullOrEmpty(arguments.get(SnowflakeInputFormatProvider.PROPERTY_ESCAPE_CHAR))
+      ? arguments.get(SnowflakeInputFormatProvider.PROPERTY_ESCAPE_CHAR)
+      : SnowflakeInputFormatProvider.PROPERTY_DEFAULT_ESCAPE_CHAR;
     Schema schema = SchemaHelper.getSchema(config, failureCollector);
     failureCollector.getOrThrowException();
 
@@ -81,7 +87,7 @@ public class SnowflakeBatchSource extends BatchSource<NullWritable, Map<String, 
                                    .collect(Collectors.toList()));
     }
 
-    context.setInput(Input.of(config.getReferenceName(), new SnowflakeInputFormatProvider(config)));
+    context.setInput(Input.of(config.getReferenceName(), new SnowflakeInputFormatProvider(config, escapeChar)));
   }
 
   @Override

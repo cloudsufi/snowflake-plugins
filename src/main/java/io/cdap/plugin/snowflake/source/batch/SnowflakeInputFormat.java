@@ -60,6 +60,8 @@ public class SnowflakeInputFormat extends InputFormat {
       SnowflakeInputFormatProvider.PROPERTY_CONFIG_JSON);
     SnowflakeBatchSourceConfig config = GSON.fromJson(
       configJson, SnowflakeBatchSourceConfig.class);
-    return new SnowflakeSourceAccessor(config);
+    String escapeChar = configuration.get(SnowflakeInputFormatProvider.PROPERTY_ESCAPE_CHAR,
+                                          SnowflakeInputFormatProvider.PROPERTY_DEFAULT_ESCAPE_CHAR);
+    return new SnowflakeSourceAccessor(config, escapeChar);
   }
 }

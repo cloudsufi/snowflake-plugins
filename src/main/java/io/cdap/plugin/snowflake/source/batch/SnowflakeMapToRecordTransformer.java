@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -83,7 +84,8 @@ public class SnowflakeMapToRecordTransformer {
         case TIME_MICROS:
           return TimeUnit.NANOSECONDS.toMicros(LocalTime.parse(value).toNanoOfDay());
         case DECIMAL:
-          return new BigDecimal(value).setScale(fieldSchema.getScale()).unscaledValue().toByteArray();
+            return new BigDecimal(value).setScale(fieldSchema.getScale(),
+                                                  RoundingMode.HALF_EVEN).unscaledValue().toByteArray();
         default:
           throw new IllegalArgumentException(
             String.format("Field '%s' is of unsupported type '%s'", fieldSchema.getDisplayName(),
