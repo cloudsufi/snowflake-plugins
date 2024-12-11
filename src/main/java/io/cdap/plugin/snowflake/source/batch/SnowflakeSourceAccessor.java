@@ -17,6 +17,9 @@
 package io.cdap.plugin.snowflake.source.batch;
 
 import au.com.bytecode.opencsv.CSVReader;
+import io.cdap.cdap.api.exception.ErrorCategory;
+import io.cdap.cdap.api.exception.ErrorType;
+import io.cdap.cdap.api.exception.ErrorUtils;
 import io.cdap.plugin.snowflake.common.client.SnowflakeAccessor;
 import io.cdap.plugin.snowflake.common.util.QueryUtil;
 import io.cdap.plugin.snowflake.sink.batch.SnowflakeSinkAccessor;
@@ -74,7 +77,7 @@ public class SnowflakeSourceAccessor extends SnowflakeAccessor {
    * @return List of file paths in Snowflake stage.
    * @throws IOException thrown if there are any issue with the I/O operations.
    */
-  public List<String> prepareStageSplits() throws IOException {
+  public List<String> prepareStageSplits() {
     LOG.info("Loading data into stage: '{}'", STAGE_PATH);
     String copy = String.format(COMAND_COPY_INTO, QueryUtil.removeSemicolon(config.getImportQuery()));
     if (config.getMaxSplitSize() > 0) {
@@ -92,7 +95,10 @@ public class SnowflakeSourceAccessor extends SnowflakeAccessor {
         }
       }
     } catch (SQLException e) {
-      throw new IOException(e);
+      String errorMessage = String.format("Failed to load data into stage '%s'. Error executing query: %s",
+        STAGE_PATH, e.getMessage());
+      throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+        errorMessage, e.getMessage(), ErrorType.SYSTEM, true, e);
     }
     return stageSplits;
   }
@@ -102,8 +108,16 @@ public class SnowflakeSourceAccessor extends SnowflakeAccessor {
    * @param stageSplit  path to file in Snowflake stage.
    * @throws IOException hrown if there are any issue with the I/O operations.
    */
-  public void removeStageFile(String stageSplit) throws IOException {
-    runSQL(String.format("remove @~/%s", stageSplit));
+  public void removeStageFile(String stageSplit) {
+    try {
+      runSQL(String.format("remove @~/%s", stageSplit));
+    } catch (IOException e) {
+      String errorMessage = String.format("Failed to execute the SQL remove command for stage file: %s. Error: %s",
+        stageSplit, e.getMessage()
+      );
+      throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+        errorMessage, e.getMessage(), ErrorType.SYSTEM, true, e);
+    }
   }
 
   /**
@@ -120,7 +134,12 @@ public class SnowflakeSourceAccessor extends SnowflakeAccessor {
       InputStreamReader inputStreamReader = new InputStreamReader(downloadStream);
       return new CSVReader(inputStreamReader, ',', '"', escapeChar);
     } catch (SQLException e) {
-      throw new IOException(e);
+      String errorMessage = String.format(
+        "Failed to execute the query due to an SQL exception. Stage Split: %s. Reason: %s",
+        stageSplit, e.getMessage()
+      );
+      throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+        errorMessage, e.getMessage(), ErrorType.SYSTEM, true, new IOException(e));
     }
   }
 }

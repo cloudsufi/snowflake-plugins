@@ -16,6 +16,9 @@
 
 package io.cdap.plugin.snowflake.sink.batch;
 
+import io.cdap.cdap.api.exception.ErrorCategory;
+import io.cdap.cdap.api.exception.ErrorType;
+import io.cdap.cdap.api.exception.ErrorUtils;
 import io.cdap.plugin.snowflake.common.client.SnowflakeAccessor;
 import net.snowflake.client.jdbc.SnowflakeConnection;
 import org.slf4j.Logger;
@@ -45,7 +48,7 @@ public class SnowflakeSinkAccessor extends SnowflakeAccessor {
     this.config = config;
   }
 
-  public void uploadStream(InputStream inputStream, String stageDir) throws IOException {
+  public void uploadStream(InputStream inputStream, String stageDir) {
     // file name needs to be unique across all the nodes.
     String filename = String.format(DEST_FILE_NAME, UUID.randomUUID().toString());
     LOG.info("Uploading file '{}' to table stage", filename);
@@ -55,14 +58,28 @@ public class SnowflakeSinkAccessor extends SnowflakeAccessor {
                                                                 null,
                                                                 inputStream, filename, true);
     } catch (SQLException e) {
-      throw new IOException(e);
+      String errorMessage = String.format(
+        "Unable to compress and upload data to destination stage '%s'. Filename: '%s'. Error: %s",
+        stageDir, filename, e.getMessage()
+      );
+      throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+        errorMessage, e.getMessage(), ErrorType.SYSTEM, true, e);
     }
   }
 
-  public void populateTable(String destinationStagePath) throws IOException {
+  public void populateTable(String destinationStagePath) {
     String populateStatement = String.format(POPULATE_TABLE_STAGE, config.getTableName(),
                                              destinationStagePath, config.getCopyOptions());
-    runSQL(populateStatement);
+    try {
+      runSQL(populateStatement);
+    } catch (IOException e) {
+
+      String errorMessage = String.format("Unable to copy information. " +
+          "Failed to populate table '%s' from the source stage path '%s' with the provided options: '%s'. ",
+        config.getTableName(), destinationStagePath, config.getCopyOptions());
+      throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+        errorMessage, e.getMessage(), ErrorType.SYSTEM, true, e);
+    }
   }
 
   public void removeDirectory(String path) throws IOException {

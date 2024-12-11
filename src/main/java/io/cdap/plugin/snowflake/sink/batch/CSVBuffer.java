@@ -15,6 +15,9 @@
  */
 package io.cdap.plugin.snowflake.sink.batch;
 
+import io.cdap.cdap.api.exception.ErrorCategory;
+import io.cdap.cdap.api.exception.ErrorType;
+import io.cdap.cdap.api.exception.ErrorUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 
@@ -32,12 +35,12 @@ public class CSVBuffer implements Closeable {
     .withAllowMissingColumnNames(false);
 
   private CSVPrinter csvPrinter;
-  private ByteArrayOutputStream csvStream;
+  private final ByteArrayOutputStream csvStream;
   private boolean isHeaderPrinted;
-  private boolean printHeader;
+  private final boolean printHeader;
   private int recordsCount = 0;
 
-  public CSVBuffer(boolean printHeader) throws IOException {
+  public CSVBuffer(boolean printHeader) {
     this.printHeader = printHeader;
     this.csvStream = new ByteArrayOutputStream();
     reset();
@@ -54,12 +57,21 @@ public class CSVBuffer implements Closeable {
     recordsCount++;
   }
 
-  public void reset() throws IOException {
+  public void reset() {
     isHeaderPrinted = !printHeader;
     recordsCount = 0;
     csvStream.reset();
     // we need to re-create this or else OutputStreamWriter will not able to write after reset.
-    csvPrinter = new CSVPrinter(new OutputStreamWriter(csvStream, StandardCharsets.UTF_8), csvFormat);
+    try {
+      csvPrinter = new CSVPrinter(new OutputStreamWriter(csvStream, StandardCharsets.UTF_8), csvFormat);
+    } catch (IOException e) {
+      String errorMessage = String.format("Unable to reset the CSV stream and recreate the printer. " +
+        "This might occur due to issues with the OutputStreamWriter or the CSV format. " +
+        "Root cause: %s", e.getMessage()
+      );
+      throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+        errorMessage, e.getMessage(), ErrorType.UNKNOWN, true, e);
+    }
   }
 
   public int size() {

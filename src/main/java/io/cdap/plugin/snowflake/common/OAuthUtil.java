@@ -19,6 +19,9 @@ package io.cdap.plugin.snowflake.common;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
+import io.cdap.cdap.api.exception.ErrorCategory;
+import io.cdap.cdap.api.exception.ErrorType;
+import io.cdap.cdap.api.exception.ErrorUtils;
 import io.cdap.plugin.snowflake.common.exception.ConnectionTimeoutException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -31,6 +34,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.Base64;
+import java.util.Objects;
 
 /**
  * A class which contains utilities to make OAuth2 specific calls.
@@ -51,7 +55,7 @@ public class OAuthUtil {
 
       // set grant type and refresh_token. It should be in body not url!
       StringEntity entity = new StringEntity(String.format("refresh_token=%s&grant_type=refresh_token",
-                                                           URLEncoder.encode(config.getRefreshToken(), "UTF-8")));
+        URLEncoder.encode(Objects.requireNonNull(Objects.requireNonNull(config).getRefreshToken()), "UTF-8")));
       httppost.setEntity(entity);
 
       // set 'Authorization' header

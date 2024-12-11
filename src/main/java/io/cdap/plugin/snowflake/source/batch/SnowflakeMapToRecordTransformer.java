@@ -30,6 +30,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
@@ -55,7 +56,8 @@ public class SnowflakeMapToRecordTransformer {
       .filter(entry -> schema.getField(entry.getKey()) != null) // filter absent fields in the schema
       .forEach(entry -> builder.set(
         entry.getKey(),
-        convertValue(entry.getKey(), entry.getValue(), schema.getField(entry.getKey()).getSchema())));
+        convertValue(entry.getKey(), entry.getValue(),
+          Objects.requireNonNull(schema.getField(entry.getKey())).getSchema())));
     return builder.build();
   }
 
@@ -105,11 +107,12 @@ public class SnowflakeMapToRecordTransformer {
         return Double.parseDouble(castValue(value, fieldName, String.class));
       case STRING:
         return value;
-    }
+      default:
+        throw new UnexpectedFormatException(
+          String.format("Unsupported schema type: '%s' for field: '%s'. Supported types are 'bytes, boolean, "
+            + "double, string'.", fieldSchema, fieldName));
 
-    throw new UnexpectedFormatException(
-      String.format("Unsupported schema type: '%s' for field: '%s'. Supported types are 'bytes, boolean, "
-                      + "double, string'.", fieldSchema, fieldName));
+    }
   }
 
   private static <T> T castValue(Object value, String fieldName, Class<T> clazz) {

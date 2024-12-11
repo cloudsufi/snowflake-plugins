@@ -230,33 +230,10 @@ public class BaseSnowflakeConfig extends PluginConfig {
   }
 
   public void validate(FailureCollector collector) {
-    if (getOauth2Enabled()) {
-      if (!containsMacro(PROPERTY_CLIENT_ID)
-        && Strings.isNullOrEmpty(getClientId())) {
-        collector.addFailure("Client ID is not set.", null)
-          .withConfigProperty(PROPERTY_CLIENT_ID);
-      }
-      if (!containsMacro(PROPERTY_CLIENT_SECRET)
-        && Strings.isNullOrEmpty(getClientSecret())) {
-        collector.addFailure("Client Secret is not set.", null)
-          .withConfigProperty(PROPERTY_CLIENT_SECRET);
-      }
-      if (!containsMacro(PROPERTY_REFRESH_TOKEN)
-        && Strings.isNullOrEmpty(getRefreshToken())) {
-        collector.addFailure("Refresh Token is not set.", null)
-          .withConfigProperty(PROPERTY_REFRESH_TOKEN);
-      }
-    } else if (getKeyPairEnabled()) {
-      if (!containsMacro(PROPERTY_USERNAME)
-        && Strings.isNullOrEmpty(getUsername())) {
-        collector.addFailure("Username is not set.", null)
-          .withConfigProperty(PROPERTY_USERNAME);
-      }
-      if (!containsMacro(PROPERTY_PRIVATE_KEY)
-        && Strings.isNullOrEmpty(getPrivateKey())) {
-        collector.addFailure("Private Key is not set.", null)
-          .withConfigProperty(PROPERTY_PRIVATE_KEY);
-      }
+    if (Boolean.TRUE.equals(getOauth2Enabled())) {
+      validateWhenOath2Enabled(collector);
+    } else if (Boolean.TRUE.equals(getKeyPairEnabled())) {
+      validateWhenKeyPairEnabled(collector);
     } else {
       if (!containsMacro(PROPERTY_USERNAME)
         && Strings.isNullOrEmpty(getUsername())) {
@@ -270,6 +247,37 @@ public class BaseSnowflakeConfig extends PluginConfig {
       }
     }
     validateConnection(collector);
+  }
+
+  private void validateWhenKeyPairEnabled(FailureCollector collector) {
+    if (!containsMacro(PROPERTY_USERNAME)
+      && Strings.isNullOrEmpty(getUsername())) {
+      collector.addFailure("Username is not set.", null)
+        .withConfigProperty(PROPERTY_USERNAME);
+    }
+    if (!containsMacro(PROPERTY_PRIVATE_KEY)
+      && Strings.isNullOrEmpty(getPrivateKey())) {
+      collector.addFailure("Private Key is not set.", null)
+        .withConfigProperty(PROPERTY_PRIVATE_KEY);
+    }
+  }
+
+  private void validateWhenOath2Enabled(FailureCollector collector) {
+    if (!containsMacro(PROPERTY_CLIENT_ID)
+      && Strings.isNullOrEmpty(getClientId())) {
+      collector.addFailure("Client ID is not set.", null)
+        .withConfigProperty(PROPERTY_CLIENT_ID);
+    }
+    if (!containsMacro(PROPERTY_CLIENT_SECRET)
+      && Strings.isNullOrEmpty(getClientSecret())) {
+      collector.addFailure("Client Secret is not set.", null)
+        .withConfigProperty(PROPERTY_CLIENT_SECRET);
+    }
+    if (!containsMacro(PROPERTY_REFRESH_TOKEN)
+      && Strings.isNullOrEmpty(getRefreshToken())) {
+      collector.addFailure("Refresh Token is not set.", null)
+        .withConfigProperty(PROPERTY_REFRESH_TOKEN);
+    }
   }
 
   public boolean canConnect() {
@@ -299,7 +307,7 @@ public class BaseSnowflakeConfig extends PluginConfig {
         .withConfigProperty(PROPERTY_USERNAME);
 
       // TODO: for oauth2
-      if (keyPairEnabled) {
+      if (Boolean.TRUE.equals(keyPairEnabled)) {
         failure.withConfigProperty(PROPERTY_PRIVATE_KEY);
       } else {
         failure.withConfigProperty(PROPERTY_PASSWORD);

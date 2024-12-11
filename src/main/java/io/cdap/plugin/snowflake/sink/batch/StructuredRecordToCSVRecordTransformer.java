@@ -19,6 +19,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.cdap.api.exception.ErrorCategory;
+import io.cdap.cdap.api.exception.ErrorType;
+import io.cdap.cdap.api.exception.ErrorUtils;
 import io.cdap.cdap.format.StructuredRecordStringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +33,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
@@ -39,11 +43,11 @@ import javax.annotation.Nullable;
 public class StructuredRecordToCSVRecordTransformer {
   private static final Logger LOG = LoggerFactory.getLogger(StructuredRecordToCSVRecordTransformer.class);
 
-  public CSVRecord transform(StructuredRecord record) throws IOException {
+  public CSVRecord transform(StructuredRecord record) {
     List<String> fieldNames = new ArrayList<>();
     List<String> values = new ArrayList<>();
 
-    for (Schema.Field field : record.getSchema().getFields()) {
+    for (Schema.Field field : Objects.requireNonNull(Objects.requireNonNull(record.getSchema()).getFields())) {
       String fieldName = field.getName();
       String value = convertSchemaFieldToString(record.get(fieldName), field, record);
 
@@ -63,8 +67,7 @@ public class StructuredRecordToCSVRecordTransformer {
    * @return string representing the value in format, which can be understood by Snowflake
    */
   @Nullable
-  public static String convertSchemaFieldToString(Object value, Schema.Field field, StructuredRecord record)
-    throws IOException {
+  public static String convertSchemaFieldToString(Object value, Schema.Field field, StructuredRecord record) {
     // don't convert null to avoid NPE
     if (value == null) {
       return null;
@@ -100,7 +103,7 @@ public class StructuredRecordToCSVRecordTransformer {
           instant = Instant.ofEpochMilli((Long) value);
           return instant.atZone(ZoneOffset.UTC).toLocalTime().toString();
         case DECIMAL:
-          return record.getDecimal(field.getName()).toString();
+          return Objects.requireNonNull(record.getDecimal(field.getName())).toString();
         default:
           throw new IllegalArgumentException(
             String.format("Field '%s' is of unsupported type '%s'", fieldSchema.getDisplayName(),
@@ -111,12 +114,31 @@ public class StructuredRecordToCSVRecordTransformer {
     switch (fieldSchema.getType()) {
       // convert to json so it can be saved to Snowflake's variant
       case RECORD:
-        return StructuredRecordStringConverter.toJsonString((StructuredRecord) value);
-      // convert to json so it can be saved to Snowflake's variant
+        try {
+          return StructuredRecordStringConverter.toJsonString((StructuredRecord) value);
+        } catch (IOException e) {
+          String errorMessage = String.format(
+            "Failed to encode record to JSON for schema field '%s' of type RECORD. Cause: %s",
+            field.getName(), e.getMessage()
+          );
+          throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+            errorMessage, e.getMessage(), ErrorType.SYSTEM, true, e);
+        }
+        // convert to json so it can be saved to Snowflake's variant
       case ARRAY:
-        String stringRecord = StructuredRecordStringConverter.toJsonString(record);
-        JsonElement jsonObject = new JsonParser().parse(stringRecord);
-        return jsonObject.getAsJsonObject().get(field.getName()).toString();
+        String stringRecord;
+        try {
+          stringRecord = StructuredRecordStringConverter.toJsonString(record);
+          JsonElement jsonObject = new JsonParser().parse(stringRecord);
+          return jsonObject.getAsJsonObject().get(field.getName()).toString();
+        } catch (IOException e) {
+          String errorMessage = String.format(
+            "Failed to encode record to JSON for schema field '%s' of type ARRAY. Cause: %s",
+            field.getName(), e.getMessage()
+          );
+          throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+            errorMessage, e.getMessage(), ErrorType.SYSTEM, true, e);
+        }
       // convert to hex which can be understood by Snowflake and saved to BINARY type
       case BYTES:
         byte[] bytes;
