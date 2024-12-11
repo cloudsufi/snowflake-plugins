@@ -30,7 +30,9 @@ import io.cdap.cdap.etl.api.PipelineConfigurer;
 import io.cdap.cdap.etl.api.batch.BatchRuntimeContext;
 import io.cdap.cdap.etl.api.batch.BatchSource;
 import io.cdap.cdap.etl.api.batch.BatchSourceContext;
+import io.cdap.cdap.etl.api.exception.ErrorDetailsProviderSpec;
 import io.cdap.plugin.common.LineageRecorder;
+import io.cdap.plugin.snowflake.common.SnowflakeErrorDetailsProvider;
 import io.cdap.plugin.snowflake.common.util.SchemaHelper;
 import org.apache.hadoop.io.NullWritable;
 
@@ -87,6 +89,8 @@ public class SnowflakeBatchSource extends BatchSource<NullWritable, Map<String, 
                                    .collect(Collectors.toList()));
     }
 
+    // set error details provider
+    context.setErrorDetailsProvider(new ErrorDetailsProviderSpec(SnowflakeErrorDetailsProvider.class.getName()));
     context.setInput(Input.of(config.getReferenceName(), new SnowflakeInputFormatProvider(config, escapeChar)));
   }
 

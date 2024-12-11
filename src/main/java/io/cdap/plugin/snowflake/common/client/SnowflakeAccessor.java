@@ -18,10 +18,15 @@ package io.cdap.plugin.snowflake.common.client;
 
 import com.google.common.base.Strings;
 import io.cdap.cdap.api.dataset.lib.KeyValue;
+import io.cdap.cdap.api.exception.ErrorCategory;
+import io.cdap.cdap.api.exception.ErrorType;
+import io.cdap.cdap.api.exception.ErrorUtils;
 import io.cdap.plugin.common.KeyValueListParser;
 import io.cdap.plugin.snowflake.common.BaseSnowflakeConfig;
 import io.cdap.plugin.snowflake.common.OAuthUtil;
+import io.cdap.plugin.snowflake.common.SnowflakeErrorType;
 import io.cdap.plugin.snowflake.common.exception.ConnectionTimeoutException;
+import io.cdap.plugin.snowflake.common.util.DocumentUrlUtil;
 import io.cdap.plugin.snowflake.common.util.QueryUtil;
 import net.snowflake.client.jdbc.SnowflakeBasicDataSource;
 import org.apache.http.impl.client.HttpClients;
@@ -56,14 +61,17 @@ public class SnowflakeAccessor {
     initDataSource(dataSource, config);
   }
 
-  public void runSQL(String query) throws IOException {
+  public void runSQL(String query) {
     try (Connection connection = dataSource.getConnection();
          PreparedStatement populateStmt = connection.prepareStatement(query);) {
       populateStmt.execute();
     } catch (SQLException e) {
-      throw new IOException(String.format("Statement '%s' failed due to '%s'", query, e.getMessage()), e);
+      String errorMessage = String.format("Statement '%s' failed with SQL state %s and error code %s due to '%s'",
+        query, e.getSQLState(), e.getErrorCode(), e.getMessage());
+      String errorReason = String.format("Statement '%s' failed with SQL state %s and error code %s. For more " +
+        "details see %s.", query, e.getSQLState(), e.getErrorCode(), DocumentUrlUtil.getSupportedDocumentUrl());
+      throw SnowflakeErrorType.fetchProgramFailureException(e, errorReason, errorMessage);
     }
-
   }
 
   /**
@@ -88,7 +96,11 @@ public class SnowflakeAccessor {
         fieldDescriptors.add(new SnowflakeFieldDescriptor(name, type, nullable));
       }
     } catch (SQLException e) {
-      throw new IOException(e);
+      String errorMessage = String.format("Failed to execute query to fetch descriptors with SQL State %s and error " +
+        "code %s with message: %s.", e.getSQLState(), e.getErrorCode(), e.getMessage());
+      String errorReason = String.format("Failed to execute query to fetch descriptors with SQL State %s and error " +
+        "code %s. For more details %s", e.getSQLState(), e.getErrorCode(), DocumentUrlUtil.getSupportedDocumentUrl());
+      throw SnowflakeErrorType.fetchProgramFailureException(e, errorReason, errorMessage);
     }
     return fieldDescriptors;
   }
@@ -108,14 +120,14 @@ public class SnowflakeAccessor {
       dataSource.setRole(role);
     }
 
-    if (config.getOauth2Enabled()) {
+    if (Boolean.TRUE.equals(config.getOauth2Enabled())) {
       String accessToken = OAuthUtil.getAccessTokenByRefreshToken(HttpClients.createDefault(), config);
       dataSource.setOauthToken(accessToken);
       // The recommend way to pass token is in the password when you use the driver with connection pool.
       // This is also a mandatory field, so adding the same.
       // Refer https://github.com/snowflakedb/snowflake-jdbc/issues/1175
       dataSource.setPassword(accessToken);
-    } else if (config.getKeyPairEnabled()) {
+    } else if (Boolean.TRUE.equals(config.getKeyPairEnabled())) {
       dataSource.setUser(config.getUsername());
 
       String privateKeyPath = writeTextToTmpFile(config.getPrivateKey());
@@ -143,6 +155,12 @@ public class SnowflakeAccessor {
       connection.getMetaData();
     } catch (SQLException e) {
       throw new ConnectionTimeoutException("Cannot create Snowflake connection.", e);
+    } catch (NullPointerException e) {
+      String errorMessage = String.format("Failed to create Snowflake connection due to missing Username or password " +
+        "with message: %s.", e.getMessage());
+      String errorReason = "Cannot create Snowflake connection. Username or password is missing.";
+      throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+        errorReason, errorMessage, ErrorType.USER, true, e);
     }
   }
   // SnowflakeBasicDataSource doesn't provide access for additional properties.

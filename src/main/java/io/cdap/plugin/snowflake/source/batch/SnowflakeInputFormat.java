@@ -18,7 +18,6 @@ package io.cdap.plugin.snowflake.source.batch;
 
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -26,7 +25,6 @@ import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,7 +37,7 @@ public class SnowflakeInputFormat extends InputFormat {
   private static final Gson GSON = new Gson();
 
   @Override
-  public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
+  public List<InputSplit> getSplits(JobContext jobContext) {
     SnowflakeSourceAccessor snowflakeAccessor = getSnowflakeAccessor(jobContext.getConfiguration());
     List<String> stageSplits = snowflakeAccessor.prepareStageSplits();
     return stageSplits.stream()

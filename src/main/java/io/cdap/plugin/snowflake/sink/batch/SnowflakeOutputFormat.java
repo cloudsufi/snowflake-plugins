@@ -16,7 +16,9 @@
 package io.cdap.plugin.snowflake.sink.batch;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import io.cdap.cdap.api.exception.ErrorCategory;
+import io.cdap.cdap.api.exception.ErrorType;
+import io.cdap.cdap.api.exception.ErrorUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.JobContext;
@@ -28,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.UUID;
 
 /**
@@ -43,9 +46,8 @@ public class SnowflakeOutputFormat extends OutputFormat<NullWritable, CSVRecord>
   public static final String DESTINATION_STAGE_PATH_PROPERTY = "cdap.dest.stage.path";
 
   @Override
-  public RecordWriter<NullWritable, CSVRecord> getRecordWriter(TaskAttemptContext taskAttemptContext)
-    throws IOException {
-      return new SnowflakeRecordWriter(taskAttemptContext);
+  public RecordWriter<NullWritable, CSVRecord> getRecordWriter(TaskAttemptContext taskAttemptContext) {
+    return new SnowflakeRecordWriter(taskAttemptContext);
   }
 
   @Override
@@ -64,11 +66,11 @@ public class SnowflakeOutputFormat extends OutputFormat<NullWritable, CSVRecord>
       public void setupJob(JobContext jobContext) {
         Configuration conf = jobContext.getConfiguration();
         conf.set(DESTINATION_STAGE_PATH_PROPERTY, DESTINATION_STAGE_PATH);
-        LOG.info(String.format("Writing data to '%s'", DESTINATION_STAGE_PATH));
+        LOG.info("Writing data to '{}'", DESTINATION_STAGE_PATH);
       }
 
       @Override
-      public void commitJob(JobContext jobContext) throws IOException {
+      public void commitJob(JobContext jobContext) {
         Configuration conf = jobContext.getConfiguration();
         String configJson = conf.get(
           SnowflakeOutputFormatProvider.PROPERTY_CONFIG_JSON);

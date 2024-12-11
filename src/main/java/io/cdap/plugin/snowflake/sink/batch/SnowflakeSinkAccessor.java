@@ -16,11 +16,12 @@
 
 package io.cdap.plugin.snowflake.sink.batch;
 
+import io.cdap.plugin.snowflake.common.SnowflakeErrorType;
 import io.cdap.plugin.snowflake.common.client.SnowflakeAccessor;
+import io.cdap.plugin.snowflake.common.util.DocumentUrlUtil;
 import net.snowflake.client.jdbc.SnowflakeConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -45,7 +46,7 @@ public class SnowflakeSinkAccessor extends SnowflakeAccessor {
     this.config = config;
   }
 
-  public void uploadStream(InputStream inputStream, String stageDir) throws IOException {
+  public void uploadStream(InputStream inputStream, String stageDir) {
     // file name needs to be unique across all the nodes.
     String filename = String.format(DEST_FILE_NAME, UUID.randomUUID().toString());
     LOG.info("Uploading file '{}' to table stage", filename);
@@ -55,17 +56,22 @@ public class SnowflakeSinkAccessor extends SnowflakeAccessor {
                                                                 null,
                                                                 inputStream, filename, true);
     } catch (SQLException e) {
-      throw new IOException(e);
+      String errorReason = String.format("Unable to compress '%s' and upload data to destination stage '%s'. For " +
+        "more details, see %s", filename, stageDir, DocumentUrlUtil.getSupportedDocumentUrl());
+      String errorMessage = String.format("Failed to compress '%s' and upload data to destination stage '%s' with " +
+          "errorCode: '%s' and sqlState: '%s' with message: %s.", filename, stageDir, e.getErrorCode(), e.getSQLState(),
+        e.getMessage());
+      throw SnowflakeErrorType.fetchProgramFailureException(e, errorReason, errorMessage);
     }
   }
 
-  public void populateTable(String destinationStagePath) throws IOException {
+  public void populateTable(String destinationStagePath) {
     String populateStatement = String.format(POPULATE_TABLE_STAGE, config.getTableName(),
                                              destinationStagePath, config.getCopyOptions());
     runSQL(populateStatement);
   }
 
-  public void removeDirectory(String path) throws IOException {
+  public void removeDirectory(String path) {
     runSQL(String.format("remove %s", path));
   }
 }

@@ -17,9 +17,10 @@
 package io.cdap.plugin.snowflake.source.batch;
 
 import au.com.bytecode.opencsv.CSVReader;
+import io.cdap.plugin.snowflake.common.SnowflakeErrorType;
 import io.cdap.plugin.snowflake.common.client.SnowflakeAccessor;
+import io.cdap.plugin.snowflake.common.util.DocumentUrlUtil;
 import io.cdap.plugin.snowflake.common.util.QueryUtil;
-import io.cdap.plugin.snowflake.sink.batch.SnowflakeSinkAccessor;
 import net.snowflake.client.jdbc.SnowflakeConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +39,7 @@ import java.util.UUID;
  * A class which accesses Snowflake API to do actions used by batch source.
  */
 public class SnowflakeSourceAccessor extends SnowflakeAccessor {
-  private static final Logger LOG = LoggerFactory.getLogger(SnowflakeSinkAccessor.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SnowflakeSourceAccessor.class);
   // Directory should be unique, so that parallel pipelines can run correctly, as well as after failure we don't
   // have old stage files in the dir.
   private static final String STAGE_PATH = "@~/cdap_stage/result" + UUID.randomUUID() + "/";
@@ -74,7 +75,7 @@ public class SnowflakeSourceAccessor extends SnowflakeAccessor {
    * @return List of file paths in Snowflake stage.
    * @throws IOException thrown if there are any issue with the I/O operations.
    */
-  public List<String> prepareStageSplits() throws IOException {
+  public List<String> prepareStageSplits() {
     LOG.info("Loading data into stage: '{}'", STAGE_PATH);
     String copy = String.format(COMAND_COPY_INTO, QueryUtil.removeSemicolon(config.getImportQuery()));
     if (config.getMaxSplitSize() > 0) {
@@ -92,7 +93,12 @@ public class SnowflakeSourceAccessor extends SnowflakeAccessor {
         }
       }
     } catch (SQLException e) {
-      throw new IOException(e);
+      String errorReason = String.format("Failed to load data into stage '%s' with sqlState %s and errorCode %s. " +
+          "For more details, see %s.", STAGE_PATH, e.getErrorCode(), e.getSQLState(),
+        DocumentUrlUtil.getSupportedDocumentUrl());
+      String errorMessage = String.format("Failed to load data into stage '%s' with sqlState %s and errorCode %s. " +
+        "Failed to execute query with message: %s.", STAGE_PATH, e.getSQLState(), e.getErrorCode(), e.getMessage());
+      throw SnowflakeErrorType.fetchProgramFailureException(e, errorReason, errorMessage);
     }
     return stageSplits;
   }
@@ -102,7 +108,7 @@ public class SnowflakeSourceAccessor extends SnowflakeAccessor {
    * @param stageSplit  path to file in Snowflake stage.
    * @throws IOException hrown if there are any issue with the I/O operations.
    */
-  public void removeStageFile(String stageSplit) throws IOException {
+  public void removeStageFile(String stageSplit) {
     runSQL(String.format("remove @~/%s", stageSplit));
   }
 
@@ -111,16 +117,20 @@ public class SnowflakeSourceAccessor extends SnowflakeAccessor {
    *
    * @param stageSplit path to file in Snowflake stage.
    * @return CSVReader.
-   * @throws IOException thrown if there are any issue with the I/O operations.
    */
-  public CSVReader buildCsvReader(String stageSplit) throws IOException {
+  public CSVReader buildCsvReader(String stageSplit) {
     try (Connection connection = dataSource.getConnection()) {
       InputStream downloadStream = connection.unwrap(SnowflakeConnection.class)
         .downloadStream("@~", stageSplit, true);
       InputStreamReader inputStreamReader = new InputStreamReader(downloadStream);
       return new CSVReader(inputStreamReader, ',', '"', escapeChar);
     } catch (SQLException e) {
-      throw new IOException(e);
+      String errorReason = String.format("Failed to execute the query with sqlState: '%s' & errorCode: '%s'. " +
+        "For more details, see %s.", e.getSQLState(), e.getErrorCode(), DocumentUrlUtil.getSupportedDocumentUrl());
+      String errorMessage = String.format("Failed to execute the query with sqlState: '%s' & errorCode: '%s' " +
+          "with message: %s, stage split at %s.", e.getSQLState(), e.getErrorCode(),
+        e.getMessage(), stageSplit);
+      throw SnowflakeErrorType.fetchProgramFailureException(e, errorReason, errorMessage);
     }
   }
 }
