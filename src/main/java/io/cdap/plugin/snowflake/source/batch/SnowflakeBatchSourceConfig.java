@@ -19,8 +19,12 @@ package io.cdap.plugin.snowflake.source.batch;
 import io.cdap.cdap.api.annotation.Description;
 import io.cdap.cdap.api.annotation.Macro;
 import io.cdap.cdap.api.annotation.Name;
+import io.cdap.cdap.etl.api.FailureCollector;
 import io.cdap.plugin.snowflake.common.BaseSnowflakeConfig;
+
+import java.util.Objects;
 import javax.annotation.Nullable;
+
 
 /**
  * This class {@link SnowflakeBatchSourceConfig} provides all the configuration required for
@@ -83,4 +87,15 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
   public String getSchema() {
     return schema;
   }
+
+  public void validate(FailureCollector collector) {
+    super.validate(collector);
+
+    if (!containsMacro(PROPERTY_MAX_SPLIT_SIZE) && Objects.nonNull(maxSplitSize)
+      && maxSplitSize < 0) {
+      collector.addFailure("Maximum Slit Size cannot be a negative number.", null)
+        .withConfigProperty(PROPERTY_MAX_SPLIT_SIZE);
+    }
+  }
+
 }

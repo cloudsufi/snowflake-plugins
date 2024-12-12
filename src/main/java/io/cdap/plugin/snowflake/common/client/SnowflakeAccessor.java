@@ -18,6 +18,9 @@ package io.cdap.plugin.snowflake.common.client;
 
 import com.google.common.base.Strings;
 import io.cdap.cdap.api.dataset.lib.KeyValue;
+import io.cdap.cdap.api.exception.ErrorCategory;
+import io.cdap.cdap.api.exception.ErrorType;
+import io.cdap.cdap.api.exception.ErrorUtils;
 import io.cdap.plugin.common.KeyValueListParser;
 import io.cdap.plugin.snowflake.common.BaseSnowflakeConfig;
 import io.cdap.plugin.snowflake.common.OAuthUtil;
@@ -88,7 +91,9 @@ public class SnowflakeAccessor {
         fieldDescriptors.add(new SnowflakeFieldDescriptor(name, type, nullable));
       }
     } catch (SQLException e) {
-      throw new IOException(e);
+      String errorMessage = "Error occurred while executing query to fetch descriptors. ";
+      throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+        errorMessage, e.getMessage(), ErrorType.UNKNOWN, true, e);
     }
     return fieldDescriptors;
   }

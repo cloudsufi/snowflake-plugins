@@ -41,7 +41,7 @@ import java.util.UUID;
  * A class which accesses Snowflake API to do actions used by batch source.
  */
 public class SnowflakeSourceAccessor extends SnowflakeAccessor {
-  private static final Logger LOG = LoggerFactory.getLogger(SnowflakeSinkAccessor.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SnowflakeSourceAccessor.class);
   // Directory should be unique, so that parallel pipelines can run correctly, as well as after failure we don't
   // have old stage files in the dir.
   private static final String STAGE_PATH = "@~/cdap_stage/result" + UUID.randomUUID() + "/";
