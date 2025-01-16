@@ -29,7 +29,9 @@ import io.cdap.cdap.etl.api.StageConfigurer;
 import io.cdap.cdap.etl.api.batch.BatchRuntimeContext;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSinkContext;
+import io.cdap.cdap.etl.api.exception.ErrorDetailsProviderSpec;
 import io.cdap.plugin.common.LineageRecorder;
+import io.cdap.plugin.snowflake.common.SnowflakeErrorDetailsProvider;
 import org.apache.hadoop.io.NullWritable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,12 +71,14 @@ public class SnowflakeBatchSink extends BatchSink<StructuredRecord, NullWritable
     config.validate(inputSchema, collector);
     collector.getOrThrowException();
 
+    // set error details provider
+    context.setErrorDetailsProvider(new ErrorDetailsProviderSpec(SnowflakeErrorDetailsProvider.class.getName()));
     context.addOutput(Output.of(config.getReferenceName(), new SnowflakeOutputFormatProvider(config)));
 
     LineageRecorder lineageRecorder = new LineageRecorder(context, config.getReferenceName());
     lineageRecorder.createExternalDataset(inputSchema);
     // Record the field level WriteOperation
-    if (inputSchema.getFields() != null && !inputSchema.getFields().isEmpty()) {
+    if (inputSchema != null && inputSchema.getFields() != null && !inputSchema.getFields().isEmpty()) {
       String operationDescription = String.format("Wrote to Snowflake table '%s'", config.getTableName());
       lineageRecorder.recordWrite("Write", operationDescription,
                                   inputSchema.getFields().stream()

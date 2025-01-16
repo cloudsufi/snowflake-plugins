@@ -16,6 +16,9 @@
 package io.cdap.plugin.snowflake.sink.batch;
 
 import com.google.gson.Gson;
+import io.cdap.cdap.api.exception.ErrorCategory;
+import io.cdap.cdap.api.exception.ErrorType;
+import io.cdap.cdap.api.exception.ErrorUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;
@@ -41,7 +44,7 @@ public class SnowflakeRecordWriter extends RecordWriter<NullWritable, CSVRecord>
   private final SnowflakeSinkAccessor snowflakeAccessor;
   private final String destinationStagePath;
 
-  public SnowflakeRecordWriter(TaskAttemptContext taskAttemptContext) throws IOException {
+  public SnowflakeRecordWriter(TaskAttemptContext taskAttemptContext) {
     Configuration conf = taskAttemptContext.getConfiguration();
     destinationStagePath = conf.get(SnowflakeOutputFormat.DESTINATION_STAGE_PATH_PROPERTY);
     String configJson = conf.get(
@@ -55,29 +58,51 @@ public class SnowflakeRecordWriter extends RecordWriter<NullWritable, CSVRecord>
   }
 
   @Override
-  public void write(NullWritable key, CSVRecord csvRecord) throws IOException {
+  public void write(NullWritable key, CSVRecord csvRecord) {
     csvBufferSizeCheck.reset();
-    csvBufferSizeCheck.write(csvRecord);
+    try {
+      csvBufferSizeCheck.write(csvRecord);
+    } catch (IOException e) {
+      String errorMessage = String.format("Failed to write CSV record  %s in the size check buffer with message: %s",
+        csvRecord, e.getMessage());
+      String errorReason = "Unable to write CSV record in the size check buffer";
+      throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+        errorReason, errorMessage, ErrorType.SYSTEM, true, e);
+    }
 
     if (config.getMaxFileSize() > 0 && csvBuffer.size() + csvBufferSizeCheck.size() > config.getMaxFileSize()) {
       submitCurrentBatch();
     }
 
-    csvBuffer.write(csvRecord);
+    try {
+      csvBuffer.write(csvRecord);
+    } catch (IOException e) {
+      String errorMessage = String.format("Failed to write CSV record  %s in the main buffer with message: %s",
+        csvRecord, e.getMessage());
+      String errorReason = String.format("Unable to write CSV record '%s' in the main buffer.", csvRecord);
+      throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+        errorReason, errorMessage, ErrorType.SYSTEM, true, e);
+    }
   }
 
-  private void submitCurrentBatch() throws IOException {
+  private void submitCurrentBatch() {
     if (csvBuffer.getRecordsCount() != 0) {
       try (InputStream csvInputStream = new ByteArrayInputStream(csvBuffer.getByteArray())) {
         snowflakeAccessor.uploadStream(csvInputStream, destinationStagePath);
+      } catch (IOException e) {
+        String errorMessage = String.format("Failed to upload file to the destination stage '%s' with message: %s",
+          destinationStagePath, e.getMessage());
+        String errorReason = String.format("Failed to upload file to the destination stage '%s'.",
+          destinationStagePath);
+        throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+          errorReason, errorMessage, ErrorType.SYSTEM, true, e);
       }
-
       csvBuffer.reset();
     }
   }
 
   @Override
-  public void close(TaskAttemptContext taskAttemptContext) throws IOException {
+  public void close(TaskAttemptContext taskAttemptContext) {
     submitCurrentBatch();
   }
 }

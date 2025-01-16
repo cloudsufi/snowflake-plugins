@@ -19,6 +19,9 @@ package io.cdap.plugin.snowflake.common;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
+import io.cdap.cdap.api.exception.ErrorCategory;
+import io.cdap.cdap.api.exception.ErrorType;
+import io.cdap.cdap.api.exception.ErrorUtils;
 import io.cdap.plugin.snowflake.common.exception.ConnectionTimeoutException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -26,6 +29,7 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -50,15 +54,22 @@ public class OAuthUtil {
       httppost.setHeader("Content-type", "application/x-www-form-urlencoded");
 
       // set grant type and refresh_token. It should be in body not url!
-      StringEntity entity = new StringEntity(String.format("refresh_token=%s&grant_type=refresh_token",
-                                                           URLEncoder.encode(config.getRefreshToken(), "UTF-8")));
-      httppost.setEntity(entity);
+      try {
+        StringEntity entity = new StringEntity(String.format("refresh_token=%s&grant_type=refresh_token",
+          URLEncoder.encode(config.getRefreshToken(), "UTF-8")));
+        httppost.setEntity(entity);
+      } catch (NullPointerException e) {
+        String errorMessage = String.format("Failed to encode URL due to missing Refresh Token with message: %s.",
+          e.getMessage());
+        String errorReason = "Error encoding URL due to missing Refresh Token.";
+        throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+          errorReason, errorMessage, ErrorType.USER, true, e);
+      }
 
       // set 'Authorization' header
       String stringToEncode = config.getClientId() + ":" + config.getClientSecret();
       String encondedAuthorization = new String(Base64.getEncoder().encode(stringToEncode.getBytes()));
       httppost.setHeader("Authorization", String.format("Basic %s", encondedAuthorization));
-
 
       CloseableHttpResponse response = httpclient.execute(httppost);
       String responseString = EntityUtils.toString(response.getEntity(), "UTF-8");
@@ -72,7 +83,13 @@ public class OAuthUtil {
 
       // if exception happened during parsing OR if json does not contain 'access_token' key.
       if (jsonElement == null) {
-        throw new RuntimeException(String.format("Unexpected response '%s' from '%s'", responseString, uri.toString()));
+        String errorReason = String.format("Failed to parse access token from response. Request %s returned response " +
+            "code '%s' & reason: %s", uri.toString(), response.getStatusLine().getStatusCode(),
+          response.getStatusLine().getReasonPhrase());
+        String errorMessage = String.format("Failed to parse access token, request %s returned response %s " +
+          "with code '%s'.", uri, responseString, response.getStatusLine().getStatusCode());
+        throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+          errorReason, errorMessage, ErrorType.SYSTEM, true, new JsonSyntaxException(errorReason));
       }
 
       return jsonElement.getAsString();

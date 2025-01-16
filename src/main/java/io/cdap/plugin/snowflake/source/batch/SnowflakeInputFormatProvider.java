@@ -18,7 +18,6 @@ package io.cdap.plugin.snowflake.source.batch;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import io.cdap.cdap.api.data.batch.InputFormatProvider;
 
 import java.util.Map;

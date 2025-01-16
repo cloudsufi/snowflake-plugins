@@ -20,6 +20,9 @@ import com.google.common.base.Strings;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.format.UnexpectedFormatException;
 import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.cdap.api.exception.ErrorCategory;
+import io.cdap.cdap.api.exception.ErrorType;
+import io.cdap.cdap.api.exception.ErrorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,12 +54,20 @@ public class SnowflakeMapToRecordTransformer {
 
   private StructuredRecord getStructuredRecord(Map<String, String> row, Schema schema) {
     StructuredRecord.Builder builder = StructuredRecord.builder(schema);
-    row.entrySet().stream()
-      .filter(entry -> schema.getField(entry.getKey()) != null) // filter absent fields in the schema
-      .forEach(entry -> builder.set(
-        entry.getKey(),
-        convertValue(entry.getKey(), entry.getValue(), schema.getField(entry.getKey()).getSchema())));
-    return builder.build();
+    try {
+      row.entrySet().stream()
+        .filter(entry -> schema.getField(entry.getKey()) != null) // filter absent fields in the schema
+        .forEach(entry -> builder.set(
+          entry.getKey(),
+          convertValue(entry.getKey(), entry.getValue(), schema.getField(entry.getKey()).getSchema())));
+      return builder.build();
+    } catch (Exception e) {
+      String errorMessage = String.format("Failed to transform data with the provided schema with message: %s.",
+        e.getMessage());
+      String errorReason = String.format("Failed to transform data with the provided schema: %s.", schema);
+      throw ErrorUtils.getProgramFailureException(new ErrorCategory(ErrorCategory.ErrorCategoryEnum.PLUGIN),
+        errorReason, errorMessage, ErrorType.USER, true, e);
+    }
   }
 
   @Nullable
@@ -105,11 +116,11 @@ public class SnowflakeMapToRecordTransformer {
         return Double.parseDouble(castValue(value, fieldName, String.class));
       case STRING:
         return value;
+      default:
+        throw new UnexpectedFormatException(
+          String.format("Unsupported schema type: '%s' for field: '%s'. Supported types are 'bytes, boolean, "
+            + "double, string'.", fieldSchema, fieldName));
     }
-
-    throw new UnexpectedFormatException(
-      String.format("Unsupported schema type: '%s' for field: '%s'. Supported types are 'bytes, boolean, "
-                      + "double, string'.", fieldSchema, fieldName));
   }
 
   private static <T> T castValue(Object value, String fieldName, Class<T> clazz) {
