@@ -23,7 +23,6 @@ import io.cdap.cdap.etl.api.FailureCollector;
 import io.cdap.plugin.snowflake.common.BaseSnowflakeConfig;
 import io.cdap.plugin.snowflake.common.client.SnowflakeAccessor;
 import io.cdap.plugin.snowflake.common.util.SchemaHelper;
-
 import javax.annotation.Nullable;
 
 /**
