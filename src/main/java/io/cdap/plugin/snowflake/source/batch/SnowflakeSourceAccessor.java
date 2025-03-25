@@ -17,6 +17,7 @@
 package io.cdap.plugin.snowflake.source.batch;
 
 import au.com.bytecode.opencsv.CSVReader;
+import com.google.common.base.Strings;
 import io.cdap.plugin.snowflake.common.SnowflakeErrorType;
 import io.cdap.plugin.snowflake.common.client.SnowflakeAccessor;
 import io.cdap.plugin.snowflake.common.util.DocumentUrlUtil;
@@ -77,7 +78,11 @@ public class SnowflakeSourceAccessor extends SnowflakeAccessor {
    */
   public List<String> prepareStageSplits() {
     LOG.info("Loading data into stage: '{}'", STAGE_PATH);
-    String copy = String.format(COMAND_COPY_INTO, QueryUtil.removeSemicolon(config.getImportQuery()));
+    String importQuery = config.getImportQuery();
+    if (Strings.isNullOrEmpty(importQuery)) {
+      importQuery = "SELECT * FROM " + config.getTableName();
+    }
+    String copy = String.format(COMAND_COPY_INTO, QueryUtil.removeSemicolon(importQuery));
     if (config.getMaxSplitSize() > 0) {
       copy = copy + String.format(COMMAND_MAX_FILE_SIZE, config.getMaxSplitSize());
     }

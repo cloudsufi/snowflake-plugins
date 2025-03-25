@@ -36,11 +36,14 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Field;
+//import java.sql.*;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -101,6 +104,25 @@ public class SnowflakeAccessor {
       String errorReason = String.format("Failed to execute query to fetch descriptors with SQL State %s and error " +
         "code %s. For more details %s", e.getSQLState(), e.getErrorCode(), DocumentUrlUtil.getSupportedDocumentUrl());
       throw SnowflakeErrorType.fetchProgramFailureException(e, errorReason, errorMessage);
+    }
+    return fieldDescriptors;
+  }
+
+  public List<SnowflakeFieldDescriptor> describeTable(String schemaName, String tableName) throws SQLException {
+    List<SnowflakeFieldDescriptor> fieldDescriptors = new ArrayList<>();
+
+    try (Connection connection = dataSource.getConnection()) {
+      DatabaseMetaData dbMetaData = connection.getMetaData();
+
+      try (ResultSet columns = dbMetaData.getColumns(null, schemaName, tableName, null)) {
+        while (columns.next()) {
+          String columnName = columns.getString("COLUMN_NAME");
+          int columnType = columns.getInt("DATA_TYPE");
+          boolean nullable = columns.getInt("NULLABLE") == DatabaseMetaData.columnNullable;
+
+          fieldDescriptors.add(new SnowflakeFieldDescriptor(columnName, columnType, nullable));
+        }
+      }
     }
     return fieldDescriptors;
   }
@@ -192,5 +214,9 @@ public class SnowflakeAccessor {
     } catch (IOException e) {
       throw new RuntimeException("Cannot write key to temporary file", e);
     }
+  }
+
+  public String getSchema() {
+    return config.getSchemaName();
   }
 }

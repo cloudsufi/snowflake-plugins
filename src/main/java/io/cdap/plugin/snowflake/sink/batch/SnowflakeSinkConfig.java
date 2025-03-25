@@ -104,8 +104,8 @@ public class SnowflakeSinkConfig extends BaseSnowflakeConfig {
     }
 
     SnowflakeAccessor snowflakeAccessor = new SnowflakeAccessor(this);
-    Schema expectedSchema = SchemaHelper.getSchema(snowflakeAccessor, String.format(GET_FIELDS_QUERY, tableName));
-
+//    Schema expectedSchema = SchemaHelper.getSchema(snowflakeAccessor, String.format(GET_FIELDS_QUERY, tableName));
+    Schema expectedSchema = SchemaHelper.getSchema(snowflakeAccessor, getSchemaName(), tableName, null);
     try {
       SchemaHelper.checkCompatibility(expectedSchema, schema);
     } catch (IllegalArgumentException ex) {
