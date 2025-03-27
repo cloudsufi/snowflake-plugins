@@ -28,8 +28,8 @@ public class SnowflakeBatchSourceConfigBuilder {
     "schemaName",
     "importQuery",
     "tableName",
-    "username",
-    "password",
+    "bqdiuser",
+    "Datafusion@321",
     false,
     "",
     "",
@@ -106,6 +106,11 @@ public class SnowflakeBatchSourceConfigBuilder {
 
   public SnowflakeBatchSourceConfigBuilder setImportQuery(String importQuery) {
     this.importQuery = importQuery;
+    return this;
+  }
+
+  public SnowflakeBatchSourceConfigBuilder setTableName(String tableName) {
+    this.tableName = tableName;
     return this;
   }
 

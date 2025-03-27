@@ -16,6 +16,7 @@
 
 package io.cdap.plugin.snowflake.source.batch;
 
+import com.google.common.base.Strings;
 import io.cdap.cdap.api.annotation.Description;
 import io.cdap.cdap.api.annotation.Macro;
 import io.cdap.cdap.api.annotation.Name;
@@ -106,11 +107,13 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
   public void validate(FailureCollector collector) {
     super.validate(collector);
 
-    if (tableName != null && importQuery != null) {
-      collector.addFailure("Both importQuery and tableName cannot be specified at the same time.",
-                      "Provide either an importQuery or a tableName.")
-              .withConfigProperty(PROPERTY_IMPORT_QUERY)
-              .withConfigProperty(PROPERTY_TABLE_NAME);
+    if (!containsMacro(PROPERTY_IMPORT_QUERY) && !containsMacro(PROPERTY_TABLE_NAME)) {
+      if (Strings.isNullOrEmpty(tableName) && Strings.isNullOrEmpty(importQuery)) {
+        collector.addFailure("Both importQuery and tableName cannot be NULL at the same time.",
+                        "Provide either an importQuery or a tableName.")
+                .withConfigProperty(PROPERTY_IMPORT_QUERY)
+                .withConfigProperty(PROPERTY_TABLE_NAME);
+      }
     }
   }
 }

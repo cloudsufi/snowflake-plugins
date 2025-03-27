@@ -49,8 +49,11 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * A class which accesses Snowflake API.
+ * Establishes a connection to Snowflake using BaseSnowflakeConfig.
+ * Initializes and configures SnowflakeBasicDataSource.
+ * Sets application name (CDAP) and row limit (LIMIT_ROWS).
  */
+
 public class SnowflakeAccessor {
   private static final String APPLICATION_NAME = "CDAP";
   private static final int LIMIT_ROWS = 1;
@@ -63,6 +66,10 @@ public class SnowflakeAccessor {
     this.dataSource = new SnowflakeBasicDataSource();
     initDataSource(dataSource, config);
   }
+
+  /**
+   * A class which will help in connection
+   */
 
   public void runSQL(String query) {
     try (Connection connection = dataSource.getConnection();
@@ -107,6 +114,13 @@ public class SnowflakeAccessor {
     }
     return fieldDescriptors;
   }
+
+  /**
+   * Returns field descriptors for specified tableName.
+   *
+   * @return List of field descriptors.
+   * @throws IOException thrown if there are any issue with the I/O operations.
+   */
 
   public List<SnowflakeFieldDescriptor> describeTable(String schemaName, String tableName) throws SQLException {
     List<SnowflakeFieldDescriptor> fieldDescriptors = new ArrayList<>();
