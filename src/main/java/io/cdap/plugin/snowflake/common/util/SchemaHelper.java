@@ -27,6 +27,7 @@ import io.cdap.plugin.snowflake.source.batch.SnowflakeBatchSourceConfig;
 import io.cdap.plugin.snowflake.source.batch.SnowflakeInputFormatProvider;
 import io.cdap.plugin.snowflake.source.batch.SnowflakeSourceAccessor;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.sql.Types;
 import java.util.List;
 import java.util.Map;
@@ -64,18 +65,19 @@ public class SchemaHelper {
     }
 
     SnowflakeSourceAccessor snowflakeSourceAccessor =
-      new SnowflakeSourceAccessor(config, SnowflakeInputFormatProvider.PROPERTY_DEFAULT_ESCAPE_CHAR);
-    return getSchema(snowflakeSourceAccessor, config.getSchema(), collector, config.getImportQuery());
+            new SnowflakeSourceAccessor(config, SnowflakeInputFormatProvider.PROPERTY_DEFAULT_ESCAPE_CHAR);
+    return getSchema(snowflakeSourceAccessor, config.getSchema(), collector, config.getTableName(),
+            config.getImportQuery());
   }
 
   public static Schema getSchema(SnowflakeSourceAccessor snowflakeAccessor, String schema,
-                                 FailureCollector collector, String importQuery) {
+                                 FailureCollector collector, String tableName, String importQuery) {
     try {
       if (!Strings.isNullOrEmpty(schema)) {
         return getParsedSchema(schema);
       }
-      return Strings.isNullOrEmpty(importQuery) ? null : getSchema(snowflakeAccessor, importQuery);
-    } catch (SchemaParseException e) {
+      return getSchema(snowflakeAccessor, tableName, importQuery);
+    } catch (SchemaParseException | IllegalArgumentException e) {
       collector.addFailure(String.format("Unable to retrieve output schema. Reason: '%s'", e.getMessage()),
                            null)
         .withStacktrace(e.getStackTrace())
@@ -95,15 +97,26 @@ public class SchemaHelper {
     }
   }
 
-  public static Schema getSchema(SnowflakeAccessor snowflakeAccessor, String importQuery) {
+  public static Schema getSchema(SnowflakeAccessor snowflakeAccessor,
+                                 String tableName, String importQuery) {
     try {
-      List<SnowflakeFieldDescriptor> result = snowflakeAccessor.describeQuery(importQuery);
+      List<SnowflakeFieldDescriptor> result;
+      // If tableName is provided, describe the table
+      if (!Strings.isNullOrEmpty(tableName)) {
+        result = snowflakeAccessor.describeTable(snowflakeAccessor.getSchema(), tableName);
+      } else {
+        result = snowflakeAccessor.describeQuery(importQuery);
+      }
+
       List<Schema.Field> fields = result.stream()
-        .map(fieldDescriptor -> Schema.Field.of(fieldDescriptor.getName(), getSchema(fieldDescriptor)))
-        .collect(Collectors.toList());
+              .map(fieldDescriptor -> Schema.Field.of(fieldDescriptor.getName(),
+                      getSchema(fieldDescriptor)))
+              .collect(Collectors.toList());
       return Schema.recordOf("data", fields);
-    } catch (IOException e) {
+    } catch (SQLException e) {
       throw new SchemaParseException(e);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 

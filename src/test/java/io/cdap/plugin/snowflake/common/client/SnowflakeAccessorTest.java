@@ -91,6 +91,21 @@ public class SnowflakeAccessorTest extends BaseSnowflakeTest {
   }
 
   @Test
+  public void testDescribeTable() throws Exception {
+    String schemaName = "TEST_SCHEMA";
+    String tableName = "TEST_TABLE";
+
+    List<SnowflakeFieldDescriptor> actual = snowflakeAccessor.describeTable(schemaName, tableName);
+
+    Assert.assertNotNull(actual);
+    Assert.assertFalse(actual.isEmpty());
+    // Optionally, verify a known column exists
+    boolean containsExpectedColumn = actual.stream()
+            .anyMatch(field -> "COLUMN_NAME".equalsIgnoreCase(field.getName()));
+    Assert.assertTrue("Expected column is not found in the table description", containsExpectedColumn);
+  }
+
+  @Test
   public void testPrepareStageSplits() throws Exception {
     Pattern expected = Pattern.compile("cdap_stage/result.*data__0_0_0\\.csv\\.gz");
 

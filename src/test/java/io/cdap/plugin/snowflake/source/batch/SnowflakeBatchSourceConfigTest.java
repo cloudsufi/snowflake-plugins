@@ -68,4 +68,5 @@ public class SnowflakeBatchSourceConfigTest {
     ValidationAssertions.assertValidationFailed(
       collector, Collections.singletonList(SnowflakeBatchSourceConfig.PROPERTY_PASSWORD));
   }
+
 }

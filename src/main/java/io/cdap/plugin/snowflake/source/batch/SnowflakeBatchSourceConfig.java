@@ -16,6 +16,7 @@
 
 package io.cdap.plugin.snowflake.source.batch;
 
+import com.google.common.base.Strings;
 import io.cdap.cdap.api.annotation.Description;
 import io.cdap.cdap.api.annotation.Macro;
 import io.cdap.cdap.api.annotation.Name;
@@ -34,6 +35,7 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
   public static final String PROPERTY_IMPORT_QUERY = "importQuery";
   public static final String PROPERTY_MAX_SPLIT_SIZE = "maxSplitSize";
   public static final String PROPERTY_SCHEMA = "schema";
+//  public static final String PROPERTY_TABLE_NAME = "tableName";
 
   @Name(PROPERTY_REFERENCE_NAME)
   @Description("This will be used to uniquely identify this source/sink for lineage, annotating metadata, etc.")
@@ -42,7 +44,9 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
   @Name(PROPERTY_IMPORT_QUERY)
   @Description("Query for import data.")
   @Macro
+  @Nullable
   private String importQuery;
+
 
   @Name(PROPERTY_MAX_SPLIT_SIZE)
   @Description("Maximum split size specified in bytes.")
@@ -55,17 +59,20 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
   @Macro
   private String schema;
 
+
   public SnowflakeBatchSourceConfig(String referenceName, String accountName, String database,
-                                    String schemaName, String importQuery, String username, String password,
+                                    String schemaName, @Nullable String importQuery, @Nullable String tableName,
+                                    String username, String password,
                                     @Nullable Boolean keyPairEnabled, @Nullable String path,
                                     @Nullable String passphrase, @Nullable Boolean oauth2Enabled,
                                     @Nullable String clientId, @Nullable String clientSecret,
                                     @Nullable String refreshToken, Long maxSplitSize,
                                     @Nullable String connectionArguments, @Nullable String schema) {
-    super(accountName, database, schemaName, username, password,
+    super(accountName, database, schemaName, tableName, username, password,
           keyPairEnabled, path, passphrase, oauth2Enabled, clientId, clientSecret, refreshToken, connectionArguments);
     this.referenceName = referenceName;
     this.importQuery = importQuery;
+//    this.tableName = tableName;
     this.maxSplitSize = maxSplitSize;
     this.schema = schema;
   }
@@ -73,6 +80,11 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
   public String getImportQuery() {
     return importQuery;
   }
+
+//  @Nullable
+//  public String getTableName() {
+//    return tableName;
+//  }
 
   public Long getMaxSplitSize() {
     return maxSplitSize;
@@ -89,11 +101,14 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
 
   public void validate(FailureCollector collector) {
     super.validate(collector);
-
-    if (!containsMacro(PROPERTY_MAX_SPLIT_SIZE) && Objects.nonNull(maxSplitSize)
-      && maxSplitSize < 0) {
-      collector.addFailure("Maximum Slit Size cannot be a negative number.", null)
-        .withConfigProperty(PROPERTY_MAX_SPLIT_SIZE);
+    if (!containsMacro(PROPERTY_IMPORT_QUERY) && !containsMacro(PROPERTY_TABLE_NAME)) {
+      if (Strings.isNullOrEmpty(getTableName()) && Strings.isNullOrEmpty(importQuery)) {
+        collector.addFailure("Both importQuery and tableName cannot be NULL at the same time.",
+                        "Provide either an importQuery or a tableName.")
+                .withConfigProperty(PROPERTY_IMPORT_QUERY)
+                .withConfigProperty(PROPERTY_TABLE_NAME);
+      }
     }
+
   }
 }

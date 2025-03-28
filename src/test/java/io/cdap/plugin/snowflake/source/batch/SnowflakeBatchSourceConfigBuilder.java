@@ -27,8 +27,9 @@ public class SnowflakeBatchSourceConfigBuilder {
     "database",
     "schemaName",
     "importQuery",
-    "username",
-    "password",
+    "tableName",
+    "userName",
+    "Password",
     false,
     "",
     "",
@@ -45,6 +46,7 @@ public class SnowflakeBatchSourceConfigBuilder {
   private String database;
   private String schemaName;
   private String importQuery;
+  private String tableName;
   private String username;
   private String password;
   private Boolean keyPairEnabled;
@@ -67,6 +69,7 @@ public class SnowflakeBatchSourceConfigBuilder {
     this.database = config.getDatabase();
     this.schemaName = config.getSchemaName();
     this.importQuery = config.getImportQuery();
+    this.tableName = config.getTableName();
     this.username = config.getUsername();
     this.password = config.getPassword();
     this.keyPairEnabled = config.getKeyPairEnabled();
@@ -103,6 +106,11 @@ public class SnowflakeBatchSourceConfigBuilder {
 
   public SnowflakeBatchSourceConfigBuilder setImportQuery(String importQuery) {
     this.importQuery = importQuery;
+    return this;
+  }
+
+  public SnowflakeBatchSourceConfigBuilder setTableName(String tableName) {
+    this.tableName = tableName;
     return this;
   }
 
@@ -172,6 +180,7 @@ public class SnowflakeBatchSourceConfigBuilder {
                                           database,
                                           schemaName,
                                           importQuery,
+                                          tableName,
                                           username,
                                           password,
                                           keyPairEnabled,
