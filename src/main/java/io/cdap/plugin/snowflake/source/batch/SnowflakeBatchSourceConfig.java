@@ -35,7 +35,7 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
   public static final String PROPERTY_IMPORT_QUERY = "importQuery";
   public static final String PROPERTY_MAX_SPLIT_SIZE = "maxSplitSize";
   public static final String PROPERTY_SCHEMA = "schema";
-  public static final String PROPERTY_TABLE_NAME = "tableName";
+//  public static final String PROPERTY_TABLE_NAME = "tableName";
 
   @Name(PROPERTY_REFERENCE_NAME)
   @Description("This will be used to uniquely identify this source/sink for lineage, annotating metadata, etc.")
@@ -47,11 +47,6 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
   @Nullable
   private String importQuery;
 
-  @Name(PROPERTY_TABLE_NAME)
-  @Description("Name of the table to import data from. If specified, importQuery will be ignored.")
-  @Macro
-  @Nullable
-  private String tableName;
 
   @Name(PROPERTY_MAX_SPLIT_SIZE)
   @Description("Maximum split size specified in bytes.")
@@ -73,11 +68,11 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
                                     @Nullable String clientId, @Nullable String clientSecret,
                                     @Nullable String refreshToken, Long maxSplitSize,
                                     @Nullable String connectionArguments, @Nullable String schema) {
-    super(accountName, database, schemaName, tableName, password,
+    super(accountName, database, schemaName, tableName, username, password,
           keyPairEnabled, path, passphrase, oauth2Enabled, clientId, clientSecret, refreshToken, connectionArguments);
     this.referenceName = referenceName;
     this.importQuery = importQuery;
-    this.tableName = tableName;
+//    this.tableName = tableName;
     this.maxSplitSize = maxSplitSize;
     this.schema = schema;
   }
@@ -86,10 +81,10 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
     return importQuery;
   }
 
-  @Nullable
-  public String getTableName() {
-    return tableName;
-  }
+//  @Nullable
+//  public String getTableName() {
+//    return tableName;
+//  }
 
   public Long getMaxSplitSize() {
     return maxSplitSize;
@@ -106,14 +101,14 @@ public class SnowflakeBatchSourceConfig extends BaseSnowflakeConfig {
 
   public void validate(FailureCollector collector) {
     super.validate(collector);
-
     if (!containsMacro(PROPERTY_IMPORT_QUERY) && !containsMacro(PROPERTY_TABLE_NAME)) {
-      if (Strings.isNullOrEmpty(tableName) && Strings.isNullOrEmpty(importQuery)) {
+      if (Strings.isNullOrEmpty(getTableName()) && Strings.isNullOrEmpty(importQuery)) {
         collector.addFailure("Both importQuery and tableName cannot be NULL at the same time.",
                         "Provide either an importQuery or a tableName.")
                 .withConfigProperty(PROPERTY_IMPORT_QUERY)
                 .withConfigProperty(PROPERTY_TABLE_NAME);
       }
     }
+
   }
 }

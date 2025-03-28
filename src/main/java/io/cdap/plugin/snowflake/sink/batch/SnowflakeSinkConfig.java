@@ -58,12 +58,12 @@ public class SnowflakeSinkConfig extends BaseSnowflakeConfig {
   private String copyOptions;
 
   public SnowflakeSinkConfig(String referenceName, String accountName, String database,
-                             String schemaName, String username, String password,
+                             String schemaName, String tableName, String username, String password,
                              @Nullable Boolean keyPairEnabled, @Nullable String path,
                              @Nullable String passphrase, @Nullable Boolean oauth2Enabled,
                              @Nullable String clientId, @Nullable String clientSecret,
                              @Nullable String refreshToken, @Nullable String connectionArguments) {
-    super(accountName, database, schemaName, username, password,
+    super(accountName, database, schemaName, tableName, username, password,
           keyPairEnabled, path, passphrase, oauth2Enabled, clientId, clientSecret, refreshToken, connectionArguments);
     this.referenceName = referenceName;
   }
@@ -105,7 +105,7 @@ public class SnowflakeSinkConfig extends BaseSnowflakeConfig {
 
     SnowflakeAccessor snowflakeAccessor = new SnowflakeAccessor(this);
 //    Schema expectedSchema = SchemaHelper.getSchema(snowflakeAccessor, String.format(GET_FIELDS_QUERY, tableName));
-    Schema expectedSchema = SchemaHelper.getSchema(snowflakeAccessor, getSchemaName(), tableName, null);
+    Schema expectedSchema = SchemaHelper.getSchema(snowflakeAccessor, tableName, null);
     try {
       SchemaHelper.checkCompatibility(expectedSchema, schema);
     } catch (IllegalArgumentException ex) {

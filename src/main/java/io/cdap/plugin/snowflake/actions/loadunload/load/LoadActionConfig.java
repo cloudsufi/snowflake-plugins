@@ -71,11 +71,13 @@ public class LoadActionConfig extends LoadUnloadConfig {
   @Nullable
   private String pattern;
 
-  public LoadActionConfig(String accountName, String database, String schemaName, String username, String password,
+  public LoadActionConfig(String accountName, String database, String schemaName, String tableName,
+                          String username, String password,
                           @Nullable Boolean keyPairEnabled, @Nullable String path, @Nullable String passphrase,
                           @Nullable Boolean oauth2Enabled, @Nullable String clientId, @Nullable String clientSecret,
                           @Nullable String refreshToken, @Nullable String connectionArguments) {
-    super(accountName, database, schemaName, username, password, keyPairEnabled, path, passphrase, oauth2Enabled,
+    super(accountName, database, tableName, schemaName, username, password, keyPairEnabled, path, passphrase,
+            oauth2Enabled,
           clientId, clientSecret, refreshToken, connectionArguments);
   }
 

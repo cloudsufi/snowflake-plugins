@@ -76,8 +76,8 @@ public class SchemaHelper {
       if (!Strings.isNullOrEmpty(schema)) {
         return getParsedSchema(schema);
       }
-      return getSchema(snowflakeAccessor, snowflakeAccessor.getSchema(), tableName, importQuery);
-    } catch (SchemaParseException e) {
+      return getSchema(snowflakeAccessor, tableName, importQuery);
+    } catch (SchemaParseException | IllegalArgumentException e) {
       collector.addFailure(String.format("Unable to retrieve output schema. Reason: '%s'", e.getMessage()),
                            null)
         .withStacktrace(e.getStackTrace())
@@ -97,18 +97,17 @@ public class SchemaHelper {
     }
   }
 
-  public static Schema getSchema(SnowflakeAccessor snowflakeAccessor, String schemaName,
+  public static Schema getSchema(SnowflakeAccessor snowflakeAccessor,
                                  String tableName, String importQuery) {
     try {
       List<SnowflakeFieldDescriptor> result;
       // If tableName is provided, describe the table
       if (!Strings.isNullOrEmpty(tableName)) {
-        result = snowflakeAccessor.describeTable(schemaName, tableName);
-      } else if (!Strings.isNullOrEmpty(importQuery)) {
-        result = snowflakeAccessor.describeQuery(importQuery);
+        result = snowflakeAccessor.describeTable(snowflakeAccessor.getSchema(), tableName);
       } else {
-        return null;
+        result = snowflakeAccessor.describeQuery(importQuery);
       }
+
       List<Schema.Field> fields = result.stream()
               .map(fieldDescriptor -> Schema.Field.of(fieldDescriptor.getName(),
                       getSchema(fieldDescriptor)))

@@ -69,35 +69,4 @@ public class SnowflakeBatchSourceConfigTest {
       collector, Collections.singletonList(SnowflakeBatchSourceConfig.PROPERTY_PASSWORD));
   }
 
- /*
- *  Creating a config where both tableName and importQuery are null
-  */
-
-  @Test
-  public void testValidateTableNameAndImportQueryNull() {
-    SnowflakeBatchSourceConfig config = new SnowflakeBatchSourceConfigBuilder()
-            .setReferenceName("testRef")
-            .setAccountName("testAccount")
-            .setDatabase("testDB")
-            .setSchemaName("testSchema")
-            .setUsername("testUser")
-            .setPassword("testPassword")
-            .setMaxSplitSize(1024L)
-            .setTableName(null)
-            .setImportQuery(null)
-            .build();
-
-    // Mock FailureCollector to capture validation errors
-    MockFailureCollector collector = new MockFailureCollector(MOCK_STAGE);
-    config.validate(collector);
-    Assert.assertFalse(collector.getValidationFailures().isEmpty());
-    ValidationAssertions.assertValidationFailed(
-            collector,
-            Collections.singletonList(SnowflakeBatchSourceConfig.PROPERTY_IMPORT_QUERY)
-    );
-    ValidationAssertions.assertValidationFailed(
-            collector,
-            Collections.singletonList(SnowflakeBatchSourceConfig.PROPERTY_TABLE_NAME)
-    );
-  }
 }

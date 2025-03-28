@@ -27,11 +27,14 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import static net.snowflake.client.loader.LoaderProperty.tableName;
 
 /**
  * Tests for {@link SchemaHelper}
@@ -50,11 +53,11 @@ public class SchemaHelperTest {
     );
 
     MockFailureCollector collector = new MockFailureCollector(MOCK_STAGE);
-    SnowflakeBatchSourceConfig mockConfig = Mockito.mock(SnowflakeBatchSourceConfig.class);
-    Mockito.when(mockConfig.canConnect()).thenReturn(false);
-    Mockito.when(mockConfig.getSchema()).thenReturn(expected.toString());
-
-    Schema actual = SchemaHelper.getSchema(mockConfig, collector);
+//    SnowflakeBatchSourceConfig mockConfig = Mockito.mock(SnowflakeBatchSourceConfig.class);
+//    Mockito.when(mockConfig.canConnect()).thenReturn(false);
+//    Mockito.when(mockConfig.getSchema()).thenReturn(expected.toString());
+    Schema actual = SchemaHelper.getSchema(null, expected.toString(), collector, null,
+            null);
 
     Assert.assertTrue(collector.getValidationFailures().isEmpty());
     Assert.assertEquals(expected, actual);
@@ -65,8 +68,8 @@ public class SchemaHelperTest {
     MockFailureCollector collector = new MockFailureCollector(MOCK_STAGE);
     SnowflakeBatchSourceConfig mockConfig = Mockito.mock(SnowflakeBatchSourceConfig.class);
     Mockito.when(mockConfig.getSchema()).thenReturn("{}");
-//    SchemaHelper.getSchema(null, "{}", collector, null);
-    SchemaHelper.getSchema(mockConfig, collector);
+    SchemaHelper.getSchema(null, "{}", collector, null, null);
+//    SchemaHelper.getSchema(mockConfig, collector);
     ValidationAssertions.assertValidationFailed(
       collector, Collections.singletonList(SnowflakeBatchSourceConfig.PROPERTY_SCHEMA));
   }
@@ -81,15 +84,16 @@ public class SchemaHelperTest {
     sample.add(new SnowflakeFieldDescriptor("field1", -1000, false));
 
     Mockito.when(snowflakeAccessor.describeQuery(importQuery)).thenReturn(sample);
-
-    SchemaHelper.getSchema(snowflakeAccessor, MOCK_SCHEMA, MOCK_TABLE, importQuery);
+     String tableName = "tableName";
+    SchemaHelper.getSchema(snowflakeAccessor, null, collector, tableName, importQuery);
     ValidationAssertions.assertValidationFailed(
       collector, Collections.singletonList(SnowflakeBatchSourceConfig.PROPERTY_SCHEMA));
   }
 
   @Test
-  public void testGetSchemaFromSnowflake() throws IOException {
+  public void testGetSchemaFromSnowflake() throws IOException, SQLException {
     String importQuery = "SELECT * FROM someTable";
+    String tableName = "tableName";
     MockFailureCollector collector = new MockFailureCollector(MOCK_STAGE);
     SnowflakeSourceAccessor snowflakeAccessor = Mockito.mock(SnowflakeSourceAccessor.class);
 
@@ -148,12 +152,16 @@ public class SchemaHelperTest {
       Schema.Field.of("field131", Schema.nullableOf(Schema.decimalOf(38))),
       Schema.Field.of("field132", Schema.decimalOf(38)),
       Schema.Field.of("field133", Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)),
-      Schema.Field.of("field134", Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)))
+            Schema.Field.of("field134", Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)))
+
     );
 
     Mockito.when(snowflakeAccessor.describeQuery(importQuery)).thenReturn(sample);
+    Mockito.when(snowflakeAccessor.describeTable(Mockito.any(), String.valueOf (Mockito.eq(tableName)))).
+            thenReturn(sample);
 
-    Schema actual = SchemaHelper.getSchema(snowflakeAccessor, MOCK_SCHEMA, MOCK_TABLE, importQuery);
+
+    Schema actual = SchemaHelper.getSchema(snowflakeAccessor, null, collector, tableName, importQuery);
 
     Assert.assertTrue(collector.getValidationFailures().isEmpty());
     Assert.assertEquals(expected, actual);

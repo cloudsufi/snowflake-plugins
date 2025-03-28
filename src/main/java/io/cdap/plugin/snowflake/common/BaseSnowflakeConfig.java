@@ -35,6 +35,7 @@ public class BaseSnowflakeConfig extends PluginConfig {
   public static final String PROPERTY_ACCOUNT_NAME = "accountName";
   public static final String PROPERTY_DATABASE = "database";
   public static final String PROPERTY_SCHEMA_NAME = "schemaName";
+  public static final String PROPERTY_TABLE_NAME = "TableName";
   public static final String PROPERTY_WAREHOUSE = "warehouse";
   public static final String PROPERTY_ROLE = "role";
   public static final String PROPERTY_USERNAME = "username";
@@ -63,6 +64,13 @@ public class BaseSnowflakeConfig extends PluginConfig {
   @Macro
   private String schemaName;
 
+  @Name(PROPERTY_TABLE_NAME)
+  @Description("Name of the table to import data from. If specified, importQuery will be ignored.")
+  @Macro
+  @Nullable
+  private String tableName;
+
+
   @Nullable
   @Name(PROPERTY_WAREHOUSE)
   @Description("Warehouse to connect to. If not specified default warehouse is used.")
@@ -86,6 +94,7 @@ public class BaseSnowflakeConfig extends PluginConfig {
   @Macro
   @Nullable
   private String password;
+
 
   @Name(PROPERTY_KEY_PAIR_ENABLED)
   @Description("If true, plugin will perform Key Pair authentication.")
@@ -136,6 +145,7 @@ public class BaseSnowflakeConfig extends PluginConfig {
   public BaseSnowflakeConfig(String accountName,
                              String database,
                              String schemaName,
+                             String tableName,
                              String username,
                              String password,
                              @Nullable Boolean keyPairEnabled,
@@ -150,6 +160,7 @@ public class BaseSnowflakeConfig extends PluginConfig {
     this.database = database;
     this.schemaName = schemaName;
     this.username = username;
+    this.tableName = tableName;
     this.password = password;
     this.keyPairEnabled = keyPairEnabled;
     this.privateKey = privateKey;
@@ -161,6 +172,7 @@ public class BaseSnowflakeConfig extends PluginConfig {
     this.connectionArguments = connectionArguments;
   }
 
+
   public String getAccountName() {
     return accountName;
   }
@@ -171,6 +183,11 @@ public class BaseSnowflakeConfig extends PluginConfig {
 
   public String getSchemaName() {
     return schemaName;
+  }
+
+  @Nullable
+  public String getTableName() {
+    return tableName;
   }
 
   @Nullable
